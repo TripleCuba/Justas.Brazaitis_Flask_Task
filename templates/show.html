@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<table class="table">
+    <thead>
+    <tr>
+        <th scope="col">#</th>
+        <th scope="col">My Column</th>
+    </tr>
+    </thead>
+    {% for row in data %}
+    <tbody>
+    <tr class="table-success">
+        <th scope="row">{{ row.id }}</th>
+        <td>{{ row.my_column }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+ <legend class="border-bottom mb-4">Library</legend>
+<table class="table" style="text-align:center">
+    <thead>
+    <tr>
+        <th scope="col">Book Title</th>
+        <th scope="col">Book Author</th>
+        <th scope="col">Interested?</th>
+    </tr>
+    </thead>
+    {% for row in data %}
+    {% if not row.user_id%}
+    <tbody>
+    <tr class="table-success">
+        <td>{{ row.title }}</td>
+        <td>{{row.author.name}}</td>
+        <td><a style="text-decoration:none; color:gray; font-size:1rem " href="/borrow_book/{{row.id}}">Borrow</a></td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
