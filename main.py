@@ -79,6 +79,13 @@ app.config['SECRET_KEY'] = '(/("ZOHDAJK)()kafau029)ÖÄ:ÄÖ:"OI§)"Z$()&"()!§(
 
 db = SQLAlchemy(app)
 
+user_book = db.Table(
+    'user_book', db.metadata,
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('book_id', db.Integer, db.ForeignKey('book.id'))
+
+)
+
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -88,6 +95,7 @@ class User(db.Model, UserMixin):
     email_address = db.Column(db.String(100), nullable=False, unique=True)
     password = db.Column(db.String(100), nullable=False)
     is_admin = db.Column(db.Boolean, nullable=False, default=True)
+    books = db.relationship('Book', secondary=user_book, back_populates='users')
 
 
 class Author(db.Model):
@@ -101,9 +109,9 @@ class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('author.id'))
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     author = db.relationship('Author')
-    user = db.relationship('User')
+    users = db.relationship('User', secondary=user_book, back_populates='books')
+    stock = db.Column(db.Integer, default=1)
 
 
 db.create_all()
@@ -128,32 +136,67 @@ def home():
 @app.route('/available_books', methods=['GET', 'POST'])
 @login_required
 def available_books():
-    data = Book.query
+    data = [{
+        'id': row.id,
+        'title': row.title,
+        'author': row.author,
+        'users': row.users,
+        'stock': row.stock
+    } for row in Book.query.all()]
+
     return render_template('available_books.html', data=data)
 
 
 @app.route('/borrow_book/<id>')
+@login_required
 def borrow_book(id):
+    user = User.query.filter_by(id=current_user.id).first()
     book = Book.query.filter_by(id=id).first()
-    book.user_id = current_user.id
-    db.session.add(book)
-    db.session.commit()
-    return redirect(url_for('available_books'))
+    if not user.books:
+        book.stock -= 1
+        book.users.append(user)
+        db.session.add(book)
+        db.session.commit()
+        flash('You borrowed book successfully!', 'success')
+        return redirect(url_for('available_books'))
+    else:
+        is_borrowed = list(filter(lambda x: x == book, user.books))
+        if not is_borrowed:
+            book.stock -= 1
+            book.users.append(user)
+            db.session.add(book)
+            db.session.commit()
+            flash('You have borrowed book successfully!', 'success')
+            return redirect(url_for('available_books'))
+        else:
+            print(is_borrowed)
+            flash('You already have this book!', 'danger')
+            return redirect(url_for('available_books'))
 
 
 @app.route('/my_books', methods=['GET', 'POST'])
 @login_required
 def my_books():
-    data = Book.query
+    data = [{
+        'id': row.id,
+        'books': row.books,
+        'first_name': row.first_name
+
+    } for row in User.query.all()]
+
     return render_template('my_books.html', data=data)
 
 
 @app.route('/return_book/<id>')
+@login_required
 def return_book(id):
     book = Book.query.filter_by(id=id).first()
-    book.user_id = None
+    user = User.query.filter_by(id=current_user.id).first()
+    book.users.remove(user)
+    book.stock += 1
     db.session.add(book)
     db.session.commit()
+    flash('You have returned book successfully!', 'success')
     return redirect(url_for('my_books'))
 
 
